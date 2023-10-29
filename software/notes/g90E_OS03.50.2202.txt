@@ -1,0 +1,56 @@
+##----
+## ABI documentation
+##----
+
+syscall 0x01f1: int Cursor_SetPosition(int column, int row);
+@description
+	Update two globale that is used to set the cursor for Print_OS()
+	syscall:
+		- casio_cursor_column - 0x8c04fb30
+		- casio_cursor_row    - 0x8c04fb34
+@return
+	0 - error (column < 0 || column >= 21 || row < 0 || row >= 8)
+	1 - success
+
+syscall 0x01f5: unsigned int Cursor_GetSettings(struct CursorSetting *setting)
+@note:
+	struct CursorSetting {
+		uint32_t column;
+		uint32_t row;
+		struct {
+			uint32_t mode;
+			uint16_t style;
+		} flash;
+		uint8_t unknown;
+	} __attribute__((packed, align(2)));
+@return
+	the flash mode
+
+
+
+##---
+## USB information
+##---
+syscall %135d: int Comm_IsOpen(void)
+@return
+	<> 5 - Communication is ppen
+	<> 4 - Communication is not open
+
+syscall %135e: int Comm_GetCurrentSelector(void)
+@return
+	<> 0 - Serial
+	<> 1 - USB
+
+syscall %1361: void Serial_Reset(int mode)
+@arg:
+	<> mode=0 - wait until all transmit data has been sent then disable serial interrupt
+	<> mode=1 - clear receive buffer then enable interrupt
+
+
+
+
+@globals
+	8c04c860 - USB callback pointer (used by the USB interrupt handler)
+	8c04c864 - USB callback argument
+	fd801dc6 - Communication type (0x00=Serial,0x01=USB)
+	fd801dc4 - Communication is open

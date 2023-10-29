@@ -1,0 +1,24 @@
+# Website settings.
+
+url: "https://bible.planet-casio.com"
+baseurl: "/yatis"
+title: Yatis bible part !
+author: Yatis
+description: >-
+  In this section of the bible, you'll find some documentation and notes that I
+  have found when I disassembled Casio's OS :D
+
+# used plugin list
+
+plugins:
+  - jekyll
+
+# folders / file exclude list
+
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - vendor
+  - Makefile
+  - README.md
+  - bible_yatis_202-07-02.bkp.tar.xz

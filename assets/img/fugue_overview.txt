@@ -1,0 +1,149 @@
+@startjson
+' color management
+<style>
+jsonDiagram {
+  highlight {
+    BackGroundColor #58d68d;
+  }
+}
+</style>
+' file system
+#highlight "Bios Parameter Block"
+#highlight "Bfile handle magic ID"
+#highlight "(ascii) device name"
+#highlight "(ascii) root name"
+#highlight "mounted flags"
+
+' bios parameter block
+#highlight "Bios Parameter Block" / "sector size"
+#highlight "Bios Parameter Block" / "number of sector per cluster"
+#highlight "Bios Parameter Block" / "sector starting ID"
+#highlight "Bios Parameter Block" / "number of file per stage"
+#highlight "Bios Parameter Block" / "number total of cluster"
+#highlight "Bios Parameter Block" / "number free cluster"
+#highlight "Bios Parameter Block" / "address of the file meta table"
+#highlight "Bios Parameter Block" / "root sector ID"
+#highlight "Bios Parameter Block" / "address of the ?????? table"
+#highlight "Bios Parameter Block" / "address of the file descriptor table"
+#highlight "Bios Parameter Block" / "address of the primitives table"
+#highlight "Bios Parameter Block" / "address of the FAT information"
+#highlight "Bios Parameter Block" / "number of sector per stage"
+#highlight "Bios Parameter Block" / "(SHIFT-JIS) separator name"
+#highlight "Bios Parameter Block" / "(ASCII) device name"
+
+' FAT info
+#highlight "Bios Parameter Block" / "address of the FAT information" / "FAT root cluster address"
+
+' meta info
+#highlight "Bios Parameter Block" / "address of the file meta table" / "0" / "next meta address"
+#highlight "Bios Parameter Block" / "address of the file meta table" / "0" / "info"
+#highlight "Bios Parameter Block" / "address of the file meta table" / "0" / "file size"
+#highlight "Bios Parameter Block" / "address of the file meta table" / "0" / "file unknown info address"
+#highlight "Bios Parameter Block" / "address of the file meta table" / "1" / "next meta address"
+#highlight "Bios Parameter Block" / "address of the file meta table" / "1" / "info"
+#highlight "Bios Parameter Block" / "address of the file meta table" / "1" / "file size"
+#highlight "Bios Parameter Block" / "address of the file meta table" / "1" / "file unknown info address"
+
+' file descriptor
+#highlight "Bios Parameter Block" / "address of the file descriptor table" / "0" / "meta"
+#highlight "Bios Parameter Block" / "address of the file descriptor table" / "0" / "cursor position"
+#highlight "Bios Parameter Block" / "address of the file descriptor table" / "1" / "meta"
+#highlight "Bios Parameter Block" / "address of the file descriptor table" / "1" / "cursor position"
+
+' Fugue structure declaration
+{
+  "Bios Parameter Block": {
+    "sector size": "512",
+    "number of sector per cluster": "8",
+    "sector starting ID": "unstable",
+    "unknown": "unstable(?)",
+    "unknown": "unstable(?)",
+    "unknown": "unstable(?)",
+    "unknown": "unstable(?)",
+    "number of file per stage": "512",
+    "unknown": "unstable(?)",
+    "number total of cluster": "unstable",
+    "number free cluster": "unstable",
+    "unknown": "unstable(?)",
+    "root sector ID": "unstable",
+    "address of the file meta table": [
+      {
+        "next meta address": "address",
+        "info": "open mode + other infos",
+        "share_counter": "number of user that use the file",
+        "unknown": "unstable",
+        "unknown": "unstable",
+        "file size": "unstable",
+        "unknown": "unstable",
+        "unknown": "unstable",
+        "file unknown info address": [ "unknown" ],
+        "unknown": "unstable",
+        "unknown": "unstable",
+        "unknown": "unstable"
+      },
+      {
+        "next meta address": "address",
+        "info": "open mode + other infos",
+        "share_counter": "number of users that use the file",
+        "unknown": "unstable",
+        "unknown": "unstable",
+        "file size": "unstable",
+        "unknown": "unstable",
+        "unknown": "unstable",
+        "file unknown info address": [ "unknown" ],
+        "unknown": "unstable",
+        "unknown": "unstable",
+        "unknown": "unstable"
+      },
+      "..."
+    ],
+    "address of the ?????? table": [
+      "unknown",
+      "unknown",
+      "..."
+    ],
+    "address of the file descriptor table": [
+      {
+        "meta": "address of the meta information of the file",
+        "cursor position": "current data cursor",
+        "unknown": "unstable",
+        "unknown": "unstable"
+      },
+      {
+        "meta": "address of the meta information of the file",
+        "cursor position": "current data cursor",
+        "unknown": "unstable",
+        "unknown": "unstable"
+      },
+      "..."
+    ],
+    "unknown": "unstable(?)",
+    "address of the FAT information": {
+      "FAT root cluster address": "RAM Address",
+      "number of sector rest in current cluster": "unstable",
+      "current cluster ID": "unstable",
+      "current sector ID": "unstable"
+    },
+    "address of the primitives table": [
+      "primitivive",
+      "primitivive",
+      "primitivive",
+      "primitivive",
+      "primitivive",
+      "..."
+    ],
+    "unknown": "unstable(?)",
+    "number of sector per stage": "unstable",
+    "unknown": "unstable(?)",
+    "unknown": "unstable(?)",
+    "(SHIFT-JIS) separator name": "u\"\\\"",
+    "(ASCII) device name": "\"fls0\""
+  },
+  "Unknown": "0x00000002",
+  "Bfile handle magic ID": "0x00000001",
+  "(ascii) device name": "fls0",
+  "(ascii) root name": "\\",
+  "mounted flags": "1=yes 0=no",
+  "FS id": "<<ID>>"
+}
+@endjson

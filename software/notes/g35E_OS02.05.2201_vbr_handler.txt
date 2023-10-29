@@ -1,0 +1,112 @@
+Casio's VBR handlers - OS 02.05.2201 (SH4)
+
+VBR address: 0x80010028
+Exception handler
+   10128:	4f 33       	stc.l	ssr,@-r15
+   1012a:	4f 43       	stc.l	spc,@-r15
+   1012c:	4f 22       	sts.l	pr,@-r15
+   1012e:	4f f3       	stc.l	r7_bank,@-r15
+   10130:	4f e3       	stc.l	r6_bank,@-r15
+   10132:	4f d3       	stc.l	r5_bank,@-r15
+   10134:	4f c3       	stc.l	r4_bank,@-r15
+   10136:	4f b3       	stc.l	r3_bank,@-r15
+   10138:	4f a3       	stc.l	r2_bank,@-r15
+   1013a:	4f 93       	stc.l	r1_bank,@-r15
+   1013c:	4f 83       	stc.l	r0_bank,@-r15
+   1013e:	d0 01       	mov.l	0x10144,r0	! ff000024
+   10140:	a2 7e       	bra	0x10640
+   10142:	00 09       	nop
+
+TLB error handler
+   10428:	4f 33       	stc.l	ssr,@-r15
+   1042a:	4f 43       	stc.l	spc,@-r15
+   1042c:	4f 22       	sts.l	pr,@-r15
+   1042e:	4f f3       	stc.l	r7_bank,@-r15
+   10430:	4f e3       	stc.l	r6_bank,@-r15
+   10432:	4f d3       	stc.l	r5_bank,@-r15
+   10434:	4f c3       	stc.l	r4_bank,@-r15
+   10436:	4f b3       	stc.l	r3_bank,@-r15
+   10438:	4f a3       	stc.l	r2_bank,@-r15
+   1043a:	4f 93       	stc.l	r1_bank,@-r15
+   1043c:	4f 83       	stc.l	r0_bank,@-r15
+   1043e:	d0 01       	mov.l	0x10444,r0	! ff000024
+   10440:	a0 fe       	bra	0x10640
+   10442:	00 09       	nop
+
+Interrupt handler
+   10628:	4f 33       	stc.l	ssr,@-r15
+   1062a:	4f 43       	stc.l	spc,@-r15
+   1062c:	4f 22       	sts.l	pr,@-r15
+   1062e:	4f f3       	stc.l	r7_bank,@-r15
+   10630:	4f e3       	stc.l	r6_bank,@-r15
+   10632:	4f d3       	stc.l	r5_bank,@-r15
+   10634:	4f c3       	stc.l	r4_bank,@-r15
+   10636:	4f b3       	stc.l	r3_bank,@-r15
+   10638:	4f a3       	stc.l	r2_bank,@-r15
+   1063a:	4f 93       	stc.l	r1_bank,@-r15
+   1063c:	4f 83       	stc.l	r0_bank,@-r15
+   1063e:	d0 0a       	mov.l	0x10668,r0	! ff000028
+
+
+
+The fist part: 0x80010640 !
+-------------------------------
+# Get INTEVT or EXPEVT register data.
+   10640:	61 02       	mov.l	@r0,r1
+
+# Get the interrupt or exception handler's address.
+   10642:	d0 0a       	mov.l	0x1066c,r0	! fd80049c
+   10644:	71 c0       	add	#-64,r1
+   10646:	41 09       	shlr2	r1
+   10648:	41 01       	shlr	r1
+   1064a:	03 1e       	mov.l	@(r0,r1),r3
+
+# Get SR register's configuration.
+   1064c:	d0 08       	mov.l	0x10670,r0	! fd80069c
+   1064e:	41 09       	shlr2	r1
+   10650:	01 1c       	mov.b	@(r0,r1),r1
+   10652:	61 1c       	extu.b	r1,r1
+
+# Force SR assignation when this routine end.
+# NOTE: Casio force clear SR.IMASK, SR.BL and SR.RB.
+   10654:	00 02       	stc	sr,r0
+   10656:	d2 07       	mov.l	0x10674,r2	! cfffff0f
+   10658:	20 29       	and	r2,r0
+   1065a:	20 1b       	or	r1,r0
+
+# Prepare to restore the new PC (new handler which will manage the event)
+# and the new SR when the RTE instruction will be executed.
+   1065c:	40 3e       	ldc	r0,ssr
+   1065e:	43 4e       	ldc	r3,spc
+
+# It's a bit complexe, Casio need to call the new handler saved in SPC BUT they should
+# return here to restore all register bank, SSR, SPC, PR, ect...
+# So Casio force the next `rts` to come back into the last routine part (at 0x80010148)
+# which will finish the kernel job properly.
+   10660:	d0 05       	mov.l	0x10678,r0	! 80010148
+   10662:	40 2a       	lds	r0,pr
+   10664:	00 2b       	rte
+   10666:	00 09       	nop
+
+
+
+The last part: 0x80010148 !
+----------------------------------
+# Force SR register configuration (force privileged CPU processing mode).
+   10148:	d0 07       	mov.l	0x10168,r0	! 70000000
+   1014a:	40 0e       	ldc	r0,sr
+
+# Restore all register saved during the fist part.
+   1014c:	4f 87       	ldc.l	@r15+,r0_bank
+   1014e:	4f 97       	ldc.l	@r15+,r1_bank
+   10150:	4f a7       	ldc.l	@r15+,r2_bank
+   10152:	4f b7       	ldc.l	@r15+,r3_bank
+   10154:	4f c7       	ldc.l	@r15+,r4_bank
+   10156:	4f d7       	ldc.l	@r15+,r5_bank
+   10158:	4f e7       	ldc.l	@r15+,r6_bank
+   1015a:	4f f7       	ldc.l	@r15+,r7_bank
+   1015c:	4f 26       	lds.l	@r15+,pr
+   1015e:	4f 47       	ldc.l	@r15+,spc
+   10160:	4f 37       	ldc.l	@r15+,ssr
+   10162:	00 2b       	rte
+   10164:	00 09       	nop

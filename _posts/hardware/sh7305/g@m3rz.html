@@ -1,0 +1,85 @@
+---
+layout: page
+title: "LED documentation"
+permalink: /hardware/sh7305/calmezvous.html
+author: Yatis
+---
+
+## Fx9860 - LED documentations
+
+Check if the LED exist
+To check if the LED exist we have just to check the 4th bit of Port Q;
+If the bit is down the LED exist.
+
+```c
+int fx9860_check_led()
+{
+	volatile uint8_t *portQ
+
+	portQ = (void*)0xa405013a;
+	if (*portQ & 4)
+	{
+		printk("fx9860 with no LED !\n");
+		return(1);
+	}
+	printk("fx9860 with LED !\n");
+	return (0);
+}
+```
+
+---
+
+## Turn ON the LED
+To turn ON the LED you need first to select the LED "module" using Port Selector A (`0xa405014e`).
+After that, Stop the external clock used to supplie the LED using the first bit of `0xa44c0020` (DDCL_CNCR Extern Clock Control regsiter).
+Then update the extern clock settings and restart the extern clock.
+Known clock configuration (used by Casio):
+* 0x0000 - LED off.
+* 0xc003 - LED low.
+* 0xc001 - LED medium.
+* 0xc005 - LED high.
+
+```c
+int fx9860_test_led()
+{
+	uint16_t config[] = {0x0000, 0xc003, 0xc001, 0xc005};
+	//volatile uint16_t *pacr    = (void*)0xa4050100;
+	volatile uint16_t *psela   = (void*)0xa405014e;
+	volatile uint8_t *ddk_cncr = (void*)0xa44c0020;
+	volatile uint16_t *ddclk0  = (void*)0xa44c0000;
+
+	// Select LED module.
+	//*pacr = *pacr & 0x3fc;	// Used by Casio but useless here (LED output config?)
+	*psela = *psela & 0xfcff;	// Stop module.
+	*psela = *psela | 0x0100;	// Select LED pin to ouput
+
+
+	// LED loop, change luminosity.
+	int offset = 1;
+	int index = 0;
+	printk("Start LED clock !\n");
+	while (1)
+	{
+		printk("Update LED Clock = %#x\n", config[index]);
+		*ddk_cncr = *ddk_cncr & 0xfe;	// Stop External Clock 0.
+		*ddclk0 = config[index];	// Use Casio clock config.
+		*ddk_cncr = *ddk_cncr | 0x01;	// Start LED clock.
+
+		// Wait a bit (crappy method)
+		for (int i = 0 ; i < 5000000 ; i = i + 1);
+
+		// Update Configuration part.
+		index = index + offset;
+		if (index == 3)
+			offset = -1;
+		if (index == 0)
+			offset = 1;
+	}
+}
+
+<br>
+
+---
+
+## Technical note:
+Casio use the Port A to remove some bits but I don't known exactely why (I suppos is to configure LED pin to output).

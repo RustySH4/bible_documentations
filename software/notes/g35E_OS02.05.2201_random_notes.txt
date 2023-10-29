@@ -1,0 +1,127 @@
+Graph35+E - OS:02.05.2201 - Internal Casio's RAM structure documentations
+WARNING: this part is probably out-of-date and not sure !
+
+##---
+##	File Slot Cache
+##---
+88008350_struct		size: 8 bytes.
+{
+	uint32_t addr;		0
+	uint8_t status;		4
+	uint8_t info?[3]	5
+}
+@note:
+	there are only 4 struct like this stored into the P1 area.
+	It is used by Casio to store information about all currently oppened files.
+
+
+##---
+##	File Fragment Data Table
+##---
+8800842c_struct		size: 40 * 4 = 160 bytes.
+{
+	// File 0
+	uint16_t internal_status;	// Internal Casio's value to determine if file used.
+	uint16_t frag_id;		// Fragment ID.
+	uint16_t type;			// always 0x0120
+	uint16_t file_id;		// File ID.
+	uint16_t unknown;		// 0x0002 (?)
+	uint16_t frag_total;		// total number of fragments for this file.
+	uint16_t frag_current_number;	// Current fragment number.
+	uint16_t data_block_id;		// ID of blocks containing data for this fragment
+	uint16_t data_offset;		// offset of fragment data in the given block
+	uint16_t data_size;		// size of this fragment data -1
+	uint8_t fill[12];		// 0x00, 0x00, 0x00, 0x00, 0x00 ...
+
+	// File 1
+	uint16_t internal_status;	// Internal Casio's value to determine if file used.
+	uint16_t frag_id;		// Fragment ID.
+	uint16_t type;			// always 0x0120
+	uint16_t file_id;		// File ID.
+	uint16_t unknown;		// 0x0002 (?)
+	uint16_t frag_total;		// total number of fragments for this file.
+	uint16_t frag_current_number;	// Current fragment number.
+	uint16_t data_block_id;		// ID of blocks containing data for this fragment
+	uint16_t data_offset;		// offset of fragment data in the given block
+	uint16_t data_size;		// size of this fragment data -1
+	uint8_t fill[12];		// 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, ...
+
+	// File 2
+	uint16_t internal_status;	// Internal Casio's value to determine if file used.
+	uint16_t frag_id;		// Fragment ID.
+	uint16_t type;			// always 0x0120
+	uint16_t file_id;		// File ID.
+	uint16_t unknown;		// 0x0002 (?)
+	uint16_t frag_total;		// total number of fragments for this file.
+	uint16_t frag_current_number;	// Current fragment number.
+	uint16_t data_block_id;		// ID of blocks containing data for this fragment
+	uint16_t data_offset;		// offset of fragment data in the given block
+	uint16_t data_size;		// size of this fragment data -1
+	uint8_t fill[12];		// 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, ...
+
+	// File 3
+	uint16_t internal_status;	// Internal Casio's value to determine if file used.
+	uint16_t frag_id;		// Fragment ID.
+	uint16_t type;			// always 0x0120
+	uint16_t file_id;		// File ID.
+	uint16_t unknown;		// 0x0002 (?)
+	uint16_t frag_total;		// total number of fragments for this file.
+	uint16_t frag_current_number;	// Current fragment number.
+	uint16_t data_block_id;		// ID of blocks containing data for this fragment
+	uint16_t data_offset;		// offset of fragment data in the given block
+	uint16_t data_size;		// size of this fragment data -1
+	uint8_t fill[12];		// 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, ...
+}
+
+##---
+##	File information about ???
+##---
+88008584_struct		size : ?? bytes.
+{
+	uint32_t FS_id;		0
+	void *addr0;		4
+	void *addr1;		8
+	void *addr2;		12
+	uint8_t buffer0[32];	16
+	uint8_t buffer1[32];	48
+	uint16_t
+}
+
+##---
+##	File information about ???
+##---
+88008354_struct		size : 32 bytes
+{
+	// File cache 0
+	void *addr0;
+	void *addr1;
+}
+
+##---
+## Internal structure data for syscall 0x1e8
+##---
+struct_1e8 				offset
+{
+	void *addr0;				0
+	FONTCHARACTER *file_name;		4
+	uint16_t word;				8
+	void *addr1;				12
+	void *addr2;				16
+	FONTCHARACTER FS_current_filename[12];	20
+	FONTCHARACTER second_buffer[20]		48
+	FONTCHARACTER *path; 			72
+	uint32_t slot_info			76
+};
+
+##---
+## Internal structure data for syscall 0x1d1
+##---
+struct_1d1					Offset
+{
+	FONTCHARACTER first_buffer[14];		0
+	FONTCHARACTER second_buffer[10];	28
+	void *addr0;				48
+	void *addr1;				52
+	FONTCHARACTER **first_arg;		56
+	FONTCHARACTER **second_arg;		60
+};

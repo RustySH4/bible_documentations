@@ -1,0 +1,301 @@
+Casio's KEYSC interrupt handler (0xbe0) - OS 02.05.2201 (SH4)
+This is the Casio's KEYSC handler documentation part.
+The handler is really long and I can not write the entire documentation, but there is
+all important part of the handler.
+
+
+Handler start at: 0x80040c08
+First part (1/2): check which type of interruption occur
+   40c08:	2f c6       	mov.l	r12,@-r15
+   40c0a:	2f d6       	mov.l	r13,@-r15
+   40c0c:	2f e6       	mov.l	r14,@-r15
+   40c0e:	4f 22       	sts.l	pr,@-r15
+   40c10:	7f f0       	add	#-16,r15
+   40c12:	dd 43       	mov.l	0x40d20,r13	! a44b0000
+   40c14:	dc 43       	mov.l	0x40d24,r12	! 8800b268
+
+# Call a sub-routine which will disable KEYSC's interrupt visibility
+# (add interrupt mask and set interrupt level at 0, but this is not
+# the part that it will remove the KEYSC interrupt flags).
+   40c16:	d2 34       	mov.l	0x40ce8,r2	! 8003f960
+   40c18:	42 0b       	jsr	@r2
+   40c1a:	00 09       	nop
+
+
+Sub-routine: 0x8003f960
+Goal: Disable KEYSC interrupt visibility.
+# Jump into <3f974> sub-routine.
+   3f960:	a0 08       	bra	0x3f974
+   3f962:	00 09       	nop
+
+# <3f974> entry !
+# Get some addresses and masks.
+   3f974:	d4 78       	mov.l	0x3fb58,r4	! a4080094
+   3f976:	e1 80       	mov	#-128,r1	! ffffff80
+   3f978:	95 5b       	mov.w	0x3fa32,r5	! fff
+
+# Add KEYSC interrupt mask using the IMR5 register.
+   3f97a:	24 10       	mov.b	r1,@r4
+
+# Disable the KEYSC interrupt (using his interrupt level)
+# using the IPRF register.
+   3f97c:	74 80       	add	#-128,r4	! a4080014
+   3f97e:	62 41       	mov.w	@r4,r2
+   3f980:	22 59       	and	r5,r2
+   3f982:	00 0b       	rts
+   3f984:	24 21       	mov.w	r2,@r4
+
+
+
+
+
+First part (2/2): check which type of interruption occur
+# Get the content of the KEYSC interrupt controller register and save it.
+   40c1c:	85 da       	mov.w	@(20,r13),r0	! a44b0014
+
+# Get the content of <0x8800b268>.
+# I don't know what is the purpose of this variable, but that's my interpretation:
+# The Casio's KEYSC interrupt configuration enable interrupt when one key is press,
+# release and when the key is held down.
+# This variable is here to say "If at least one key is already pressed, exit".
+# This is explained why Casio skip all the KEYSC handler and just clean the interrupt.
+   40c1e:	66 c2       	mov.l	@r12,r6		! 8800b268
+   40c20:	26 68       	tst	r6,r6
+   40c22:	8d 02       	bt.s	0x40c2a
+   40c24:	6e 03       	mov	r0,r14
+
+# Jump into <80040dbe> sub-routine.
+# This routine will check the <8800b268> (undocumented) Casio's variable.
+   40c26:	a0 ca       	bra	0x40dbe
+   40c28:	00 09       	nop
+
+# Check the KEYSC interrupt controller.
+   40c2a:	60 e3       	mov	r14,r0
+   40c2c:	c8 08       	tst	#8,r0
+   40c2e:	8b 01       	bf	0x40c34
+   40c30:	a1 fa       	bra	0x41028
+   40c32:	00 09       	nop
+
+
+Sub-routine: 0x800040bde
+# Check the  (undocumented) Casio's variable.
+# Sometime, Casio  does not clear voluntary the KEYSC interrupt  and loop into the handler.
+# So this variable is probably used for each loop (?)
+# TODO: Write doc.
+   40dbe:	60 c2       	mov.l	@r12,r0
+   40dc0:	88 01       	cmp/eq	#1,r0
+   40dc2:	89 01       	bt	0x40dc8
+   40dc4:	a0 93       	bra	0x40eee
+   40dc6:	00 09       	nop
+   40dc8:	60 e3       	mov	r14,r0
+   40dca:	c8 02       	tst	#2,r0
+   40dcc:	8b 01       	bf	0x40dd2
+   40dce:	a1 2b       	bra	0x41028
+   40dd0:	00 09       	nop
+
+
+
+
+
+Second part: KEYSC CASIO SCAN
+# This part is really long and not very interesting, so I will not document all the part.
+# part 1] - dump the KEYSC
+   40c34:	61 d1       	mov.w	@r13,r1
+   40c36:	2f 11       	mov.w	r1,@r15
+   40c38:	d6 3b       	mov.l	0x40d28,r6	! 8800baa5
+   40c3a:	85 d1       	mov.w	@(2,r13),r0
+   40c3c:	81 f1       	mov.w	r0,@(2,r15)
+   40c3e:	85 d2       	mov.w	@(4,r13),r0
+   40c40:	81 f2       	mov.w	r0,@(4,r15)
+   40c42:	64 60       	mov.b	@r6,r4
+   40c44:	85 d3       	mov.w	@(6,r13),r0
+   40c46:	81 f3       	mov.w	r0,@(6,r15)
+   40c48:	24 48       	tst	r4,r4
+   40c4a:	85 d4       	mov.w	@(8,r13),r0
+   40c4c:	81 f4       	mov.w	r0,@(8,r15)
+   40c4e:	85 d5       	mov.w	@(10,r13),r0
+   40c50:	8d 19       	bt.s	0x40c86
+   40c52:	81 f5       	mov.w	r0,@(10,r15)
+
+# part 2.1] - get key pressed.
+# Casio's probably check special characters and set information into internal cache ??? (implausible)
+   40c54:	60 f1       	mov.w	@r15,r0
+   40c56:	c8 01       	tst	#1,r0
+   40c58:	89 02       	bt	0x40c60
+   40c5a:	d6 34       	mov.l	0x40d2c,r6	! 8800baa4
+   40c5c:	e2 01       	mov	#1,r2
+   40c5e:	26 20       	mov.b	r2,@r6
+   40c60:	85 f4       	mov.w	@(8,r15),r0
+   40c62:	c8 40       	tst	#64,r0
+   40c64:	89 03       	bt	0x40c6e
+   40c66:	d6 32       	mov.l	0x40d30,r6	! 8800baa7
+   40c68:	e2 10       	mov	#16,r2
+   40c6a:	a0 0c       	bra	0x40c86
+   40c6c:	26 20       	mov.b	r2,@r6
+   40c6e:	c8 20       	tst	#32,r0
+   40c70:	89 06       	bt	0x40c80
+   40c72:	d6 2f       	mov.l	0x40d30,r6	! 8800baa7
+   40c74:	60 60       	mov.b	@r6,r0
+   40c76:	88 10       	cmp/eq	#16,r0
+   40c78:	8b 05       	bf	0x40c86
+   40c7a:	e2 02       	mov	#2,r2
+   40c7c:	a0 03       	bra	0x40c86
+   40c7e:	26 20       	mov.b	r2,@r6
+   40c80:	d6 2b       	mov.l	0x40d30,r6	! 8800baa7
+   40c82:	e2 01       	mov	#1,r2
+   40c84:	26 20       	mov.b	r2,@r6
+
+# Call sub-routine which whill check column (or row) key ?.
+   40c86:	65 f3       	mov	r15,r5
+   40c88:	64 f3       	mov	r15,r4
+   40c8a:	bf 5b       	bsr	0x40b44
+   40c8c:	75 0c       	add	#12,r5
+   40c8e:	40 15       	cmp/pl	r0
+   40c90:	8d 02       	bt.s	0x40c98
+   40c92:	62 03       	mov	r0,r2
+   40c94:	a1 c0       	bra	0x41018
+   40c96:	00 09       	nop
+#### TODO: finish to write documentation ?
+
+
+
+
+
+Finish the job ! 0x8004101c
+# This is the most important part of the handler: clear the KEYSC interrupt flags !
+# It the weirdest way to clear interrupt flag...just reload the KEYSC interrupt
+# controller by itself. (>_>)
+# (Here Casio force the KEYSC interrupt configuration (0x0048)).
+
+#NOTE
+# You SHOULD mask ans disable the KEYSC interrupt before reload the
+# configuration because if not, the calculator will crash.
+# To clear KEYSC's interrupt properly you can directly reload the KEYSC
+# configuration into the KEYSC configuration.
+#	`KEYSC.INTERRUPT = KEYSC.INTERRUPT`
+# And the interrupt is correctly cleared !
+   4101c:	e6 48       	mov	#72,r6
+   4101e:	60 ec       	extu.b	r14,r0
+   41020:	46 18       	shll8	r6
+   41022:	20 6b       	or	r6,r0
+   41024:	b0 4f       	bsr	0x410c6
+   41026:	81 da       	mov.w	r0,@(20,r13)
+
+
+# Check KEYSC's interrupt register and check if all keys are released.
+# "(r14 & 64) | (r14 & 32) --> 0x66" and this code which indicate that
+# the last key has been released.
+   41028:	60 e3       	mov	r14,r0
+   4102a:	c9 40       	and	#64,r0
+   4102c:	62 03       	mov	r0,r2
+   4102e:	60 e3       	mov	r14,r0
+   41030:	c9 20       	and	#32,r0
+   41032:	22 0b       	or	r0,r2
+   41034:	22 28       	tst	r2,r2
+
+# If the last key has been released, jump into the last sub-routine <80041044>
+# which will restore the KEYSC interruption and exit properly.
+#
+# NOTE
+# I don't know why, but if the sub-routine is involved, Casio do not clear the
+# KEYSC interrupt; so I think that they voluntary keep the interrupt flag,
+# return to the handler's start and indicate that the last key has been released.
+# This is explained why, when we press many key, only the first and last keys
+# are printed (?)
+   41036:	89 05       	bt	0x41044
+
+
+# Clear KEYSC interruption !!!!
+# NOTE: Casio force the KEYSC interrupt configuration.
+   41038:	e6 48       	mov	#72,r6
+   4103a:	60 ec       	extu.b	r14,r0
+   4103c:	46 18       	shll8	r6
+   4103e:	20 6b       	or	r6,r0
+
+# Call sub-routine <410c6>
+   41040:	b0 41       	bsr	0x410c6
+   41042:	81 da       	mov.w	r0,@(20,r13)
+
+
+
+
+
+The last part of the handler
+Goal: Enable KEYSC interrupt and restore stack then exit.
+# call the <8003f968> function.
+   41044:	d2 60       	mov.l	0x411c8,r2	! 8003f968
+   41046:	42 0b       	jsr	@r2
+   41048:	00 09       	nop
+
+# Restore stack and exit :D
+   4104a:	7f 10       	add	#16,r15
+   4104c:	4f 26       	lds.l	@r15+,pr
+   4104e:	6e f6       	mov.l	@r15+,r14
+   41050:	6d f6       	mov.l	@r15+,r13
+   41052:	00 0b       	rts
+   41054:	6c f6       	mov.l	@r15+,r12
+
+
+<8003f968> function !
+Goal: Enable KEYSC interrupt and remove interrupt mask
+# Jump into <0x3f986>
+   3f968:       a0 0d           bra     0x3f986
+   3f96a:       00 09           nop
+
+# <0x3f986> entry !
+# Sub-routine called by many time by the (0xbe0) interrupt.
+# Enable the KEYSC interruption (IPRF register).
+   3f986:       d4 75           mov.l   0x3fb5c,r4      ! a4080014
+   3f988:       97 53           mov.w   0x3fa32,r7      ! fff
+   3f98a:       92 53           mov.w   0x3fa34,r2      ! d000
+   3f98c:       e5 80           mov     #-128,r5
+   3f98e:       61 41           mov.w   @r4,r1
+   3f990:       21 79           and     r7,r1
+   3f992:       21 2b           or      r2,r1
+   3f994:       24 11           mov.w   r1,@r4
+
+# clear KEYSC interrupt mask (IMCR5 register).
+   3f996:       d4 72           mov.l   0x3fb60,r4      ! a40800d4
+   3f998:       00 0b           rts
+   3f99a:       24 50           mov.b   r5,@r4
+# ...and exit
+   3f99c:       00 0b           rts
+   3f99e:       00 09           nop
+
+
+
+
+Sub-routine: 0x800410c6
+TODO: write documentation.
+   410c6:	d5 46       	mov.l	0x411e0,r5	! 8800b268
+   410c8:	66 52       	mov.l	@r5,r6
+   410ca:	26 68       	tst	r6,r6
+   410cc:	89 07       	bt	0x410de
+   410ce:	d7 41       	mov.l	0x411d4,r7	! 8800b2a8
+   410d0:	e4 10       	mov	#16,r4
+   410d2:	d2 44       	mov.l	0x411e4,r2	! 8800b2a4
+   410d4:	d6 34       	mov.l	0x411a8,r6	! 8800b2a0
+   410d6:	61 72       	mov.l	@r7,r1
+   410d8:	22 12       	mov.l	r1,@r2
+   410da:	a0 07       	bra	0x410ec
+   410dc:	26 40       	mov.b	r4,@r6
+   410de:	d6 41       	mov.l	0x411e4,r6	! 8800b2a4
+   410e0:	62 62       	mov.l	@r6,r2
+   410e2:	42 15       	cmp/pl	r2
+   410e4:	89 02       	bt	0x410ec
+   410e6:	d6 30       	mov.l	0x411a8,r6	! 8800b2a0
+   410e8:	e2 00       	mov	#0,r2
+   410ea:	26 20       	mov.b	r2,@r6
+   410ec:	d6 3e       	mov.l	0x411e8,r6	! 8800b29c
+   410ee:	e0 14       	mov	#20,r0
+   410f0:	e2 00       	mov	#0,r2
+   410f2:	25 22       	mov.l	r2,@r5
+   410f4:	15 21       	mov.l	r2,@(4,r5)
+   410f6:	15 22       	mov.l	r2,@(8,r5)
+   410f8:	15 23       	mov.l	r2,@(12,r5)
+   410fa:	15 24       	mov.l	r2,@(16,r5)
+   410fc:	05 24       	mov.b	r2,@(r0,r5)
+   410fe:	e0 15       	mov	#21,r0
+   41100:	05 24       	mov.b	r2,@(r0,r5)
+   41102:	00 0b       	rts
+   41104:	26 22       	mov.l	r2,@r6

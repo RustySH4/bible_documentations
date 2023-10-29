@@ -1,0 +1,536 @@
+Graph35+EII 0S30.00.2200 - Globals list
+
+@note pour la GrapH90+E, OS03.50.2201:
+<> Utiliser la calculatrice jsuqu'a ne pratiquement plus avoir de pile + forcer
+   le reset = le popup de "batteri faible" apparais et le menu de section de
+   langue est skip ensuite la calculatrice s'eteins.
+
+SuperH __fast call note:
+	-> arguments must be passed using r0, r1 and r2 registers
+	-> r3 must be saved before involving the function
+	-> used by the syscall 0xfe0 __fast_strcpy() and some Bfile internal function
+
+
+
+
+Usefull function (not syscall):
+	0x8004d218 - uint32_t atomic_start() (return old SR register and set up the SR.BL bit)
+	0x8004d276 - redirect to atomic_start()
+	0x801e0f94 - wrapper of syscall 0xf98 (__fast_strcpy()) (probably to use the __fast superh procedure).
+	0x801e1f80 - ascii_to_bfile() - copy ASCII string into Bfile string (uint16_t)
+	0x80267c78 - USB interrupt handler
+	0x88007cb4 - USB pointer table of functions (47 functions)
+	0x8026954c - int USB_check_interrupts(void) (check any interrupt)
+	0xa000a13a - USB hardware initialize
+	0x8008564e - strcmp-like
+
+
+
+
+VBR information:
+* VBR address            -> 0x80010028 (same as Graph35+E, 0S02.05.2200)
+* hardware handler table -> 0xfd80005c (0x040 to 0xf00)
+* hardware SR table      -> 0xfd80125c (0x040 to 0xf00)
+* exactly the same code as the Graph35+E, OS02.05.2200
+
+Interrupt handlers:
+| Module    | Interrupt code | Address    | syscall |
+|-----------|----------------|------------|---------|
+| ADC       | 0x560          | 0x80053a2a |         |
+| Cmod.RTC3 | 0x900          | 0x80085414 |         |
+| Cmod.RTC0 | 0x9e0          | 0x8008536c |         |
+| USB       | 0xa20          | 0x80097c12 | 0x4ad   |
+| RTC.API   | 0xaa0          | 0x80054704 |         |
+| DMA.DEI5  | 0xb20          | 0x8026b2b8 |         |
+| KEYSC     | 0xbe0          | 0x80053a64 |         |
+| SCIF      | 0xc00          | 0x80086cb6 |         |
+| Cmod.RTC1 | 0xc20          | 0x80085414 |         |
+| Cmod.RTC2 | 0xc40          | 0x80085414 |         |
+| Cmod.RTC4 | 0xd00          | 0x80085414 |         |
+| CMT       | 0xf00          | 0x8008536c |         |
+
+exception handlers:
+| Source                            | Exception code | Address    | syscall |
+|-----------------------------------|----------------|------------|---------|
+| TLB miss (code or read)           | 0x040          | 0x800113ce | 0x003   |
+| TLB miss (write)                  | 0x060          | 0x800113ce | 0x003   |
+| TLB miss (initial page)           | 0x080          | 0x800113ce | 0x003   |
+| TLB violation (code or read)      | 0x0a0          | 0x80011448 | 0x001   |
+| TLB violation (write)             | 0x0c0          | 0x80011448 | 0x001   |
+| Data address error                | 0x0e0          | 0x80011440 | 0x002   |
+| Data address error (code or read) | 0x0e0          | 0x80011440 | 0x002   |
+| Illegal Instruction               | 0x180          | 0x80011450 |         |
+| Non Maskable Interrupt            | 0x1c0          | 0x800539fa |         |
+
+
+
+
+Casio's globals:
+	#---
+	# Fugue / Bfile
+	# @note:
+	# * can open 16 files (handle ID -> 0x01000000 ~ 0x0100000f)
+	# * character . and .. seem simulated (TODO: analyse <8003f31a> and <8003f454>)
+	#    - if last char is space or dot, it will be ignored
+	# * the extention size limit is 8 character (<8004261a>)
+	# * the invalid ASCII character for pathname ("+=,|;[]")
+	#---
+
+        | mode name (Bfile)         | Bfile | Fugue             |
+        |---------------------------|-------|-------------------|
+        | _OPENMODE_READ            | 0x01  | 0x09, 0b0000 1001 |
+        | _OPENMODE_READ_SHARE      | 0x80  | 0x0a, 0b0000 1010 |
+        | _OPENMODE_WRITE           | 0x02  | 0x0b, 0b0000 1011 |
+        | _OPENMODE_READWRITE       | 0x03  | 0x29, 0b0010 1001 |
+        | _OPENMODE_READWRITE_SHARE | 0x83  | 0x2b, 0b0010 1011 |
+
+	 Check the returned value by the previous sub-routine
+	 and translate Fugue return code to Bfile error code
+	 @return:
+	 <> id = -1  -> IML_FILEERR_ILLEGALSYSTEM
+	 <> id = -2  -> IML_FILEERR_ILLEGALPARAM
+	 <> id = -3  -> IML_FILEERR_DEVICEERROR
+	 <> id = -4  -> 0
+	 <> id = -5  -> IML_FILEERR_ACCESSDENYED
+	 <> id = -6  -> IML_FILEERR_ILLEGALPARAM
+	 <> id = -7  -> IML_FILEERR_NOTMOUNTDEVICE
+	 <> id = -8  -> IML_FILEERR_ILLEGALPATH
+	 <> id = -9  -> IML_FILEERR_ALREADYEXISTENTRY
+	 <> id = -10 -> IML_FILEERR_ILLEGALPATH
+	 <> id = -11 -> IML_FILEERR_DEVICEFULL
+	 <> id = -12 -> IML_FILEERR_ILLEGALFILESYS
+	 <> id = -13 -> IML_FILEERR_DEVICEFULL
+	 <> id = -14 -> IML_FILEERR_ENTRYNOTFOUND
+	 <> id = -15 -> IML_FILEERR_ILLEGALPARAM
+	 <> id = -16 -> IML_FILEERR_ACCESSDENYED
+	 <> id = -17 -> IML_FILEERR_ACCESSDENYED
+	 <> id = -18 -> IML_FILEERR_ILLEGALPARAM
+	 <> id = -20 -> IML_FILEERR_ILLEGALFILESYS
+	 <> id = -40 -> IML_FILEERR_ILLEGALFILESYS
+	 <> id = -99 -> IML_FILEERR_ILLEGALFILESYS
+
+	8801071c - Fugue / Bfile mount table for all device (only one slot for the ROM) (52 bytes)
+		struct fs_control {
+			+0  void *bios;			(0x880135f8, device configuration)
+			+4  uint32_t watermark_0;	(alway(?) 0x00000002)
+			+8  uint32_t file_watermark;	(alway(?) 0x00000001, used to generate the bfile internal file handle)
+			+12 char device_name[20];	("fls0")
+			+32 char root_name[18];		(root name, "\")
+			+50 uint8_t mounted;		(0x01=mounted, 0x00=not mounted, checked by software each time the structur is used)
+			+51 uint8_t fs_id;		(unknown)
+		}
+
+	880107d8 - table of 16 entries (540 bytes) used by the Bfile_ReadFile()
+	{
+		@note:
+		* stored at the end of the mounted table (0x1c + (52x3) = d8)
+
+		struct bfile_file_descriptor_table {
+			uint32_t handle;	// used to check the fileID validity, set to 0xfffffffff by the CLose primitive (?)
+			char pathname[0x210];	// ASCII full path ("\fls0\vhex.g1a")
+			uint32_t unknown0;
+			unit32_t unknown1;
+		}
+
+		@technical note:
+		* handle:
+			* handle & 0x7f000000 -> device ID (from the mounted table, "fls0" is 0 and "crd" is 1)
+			* handle & 0x00fe0000 -> device watermark (?) (for the "fls0" the watermark is 0x01 (watermark_1))
+			* handle & 0x0001ffff -> device file index
+	}
+
+	88012998 - bfile open file counter :D
+
+	8800c2ac - Mutex for ???? (Fugue?)
+	8022d448 - ???? (Fugue?)
+	801e0d8c - Pointer table (17 functions) (used by Bfile during initialization state)
+	8022229c - Some path used to generate internal Fugue FS tree (?)
+	88013680 - internal Fugue (?) table of ???? elements
+		strcut fugue_???? {
+			uint32_t magic0;	// always 0x0003000F
+			uint32_t unknown;	//
+			uint32_t magic1;	// always 0xffffffff
+		}
+
+	880135f8 - Internal Fugue (device) configuration:
+	{
+		@note:
+		* this is the BIOS Parameter Block (BPB)
+		* this part content critical information about the FS
+
+		+0  - device configuration <0x02010001>
+			* (info & 0x00000003) - 0=FAT12, 1=FAT16,   2=FAT32, 3=ERROR
+			* (info & 0x00030000) - 0=PC,    1=FX-CALC, 2=ERROR, 3=ERROR
+			* (info & 0x03000000) - unknown
+		+4  - sector size                                           (512 bytes)
+		+8  - number of sectors per cluster                         (8, 4ko)
+		+12 - sector ID offset                                      (11, used at <80040274>)
+		+16 - unknown                                               (2)
+		+20 - unknown                                               (5)
+		+24 - unknown                                               (8)
+		+28 - unknown                                               (0x2b, used at <3a4a0>)
+		+32 - (last used) sector size(?)                            (512 bytes)
+		+36 - unknown                                               (3)
+		+40 - number total of cluster                               (0x2fb (3,1mo))
+		+44 - number of free clusters                               (0x1b7, (minus one for the root cluster?))
+		+48 - unknown                                               (0x146, (minus one for the root cluster?))
+		+52 - root sector offset                                    (29, used at <80040588>)
+		+56 - Address to the file meta table                        (<88017f18>)
+		+60 - Address to the file ???? table                        (<88017cf8>)
+		+64 - Address to the file descriptor table                  (<88017bf0>)
+		+68 - unknown                                               (always NULL?)
+		+72 - Address of the FAT header                             (<88016d90>)
+		+76 - Address to the device primitives table                (<802206f8>)
+		+80 - unknown                                               (<8802207c>)
+		+84 - (notsure) root sector number                          (<0x0004>, used at <3d4d0>,<3da58>)
+		+86 - unknown                                               (<0x0001>)
+		+88 - unknown                                               (<880175c8>)
+		+92 - path seprator                                         ("\", wide character format, 4bytes)
+		+96 - device name                                           ("fls0", ASCII format, 5bytes)
+
+		@technical / test note:
+		* one directory creation take 4096 bytes, so we
+			can affirm that the there is 8 sectors of 512 bytes per cluster
+		* With this configuration (cluster of 4ko) the device can provide 16mo
+			of storage memory (use on the Graph90+E).
+	}
+
+	Device primitive table (18):
+	{
+		+4 - find next cluster
+	}
+
+	88017bf0 - table of struct for openned file informations with 16 slot of 16 bytes
+	{
+		struct fugue_file_descriptor {
+		+0	struct fugue_openned_file_meta *meta		// should be NULL to be used
+		+4	uint32_t pos;					// file data position
+		+8	uint32_t unknown				// set to ffffffff
+		+12	uint32_t unknown				// set to 00000000
+		}
+
+
+	}
+
+	88017f18 - file "meta" table
+	{
+
+		struct fugue_file_meta_info {
+		+0	uint32_t next_meta;		// address to the next file meta informtion (internaly used?)
+		+4	uint32_t info0;			// content the open mode and other info
+		+8	uint32_t share_counter;		// number of user shared this file (?)
+		+12	uint32_t magic1;		// always 0x28(?)
+		+16	uint32_t unknown;
+		+20	uint32_t filesize;		// entiere file size
+		+24	uint32_t unknown;
+		+28	uint32_t unknown;
+		+32	uint32_t file_???_index_ptr;	// address of the file ??? information table
+		+36	uint32_t magic1;		// always 0(?)
+		+40	uint32_t magic2;		// always 0(?)
+		+44	uint32_t magic3;		// always 0x28(?)
+		}
+
+		@technical note:
+		* info:
+			& 03000000 - 
+	}
+
+	88016d90 - FAT1 header(?)
+	{
+		struct fat_info {
+			uint32_t FAT_root_cluster;			// root_directory address (<88016da0>)
+			uint32_t number_of_sector_rest_in_cluster;	// used at <3da4a>
+			uint32_t unknown;				//
+			uint32_t unknown;				// 0x00000820
+		}
+	}
+
+	88016da0 - File Allocatable Table (FAT) address
+	{
+		@note:
+		* Based on MS-DOS directory archtecture !
+		* This location can be localised using <88016d90>
+		* Sectors 0 and 1 seems reserved.
+
+		@structure:
+		{
+			struct fugue_sector_header {
+				uint32_t id;		// seems the sector ID           (checked at <3d4e6>)
+				uint16_t status;	// cannot be 0xffff FAT16 attribute             (checked at <3d4ee>)
+				uint16_t unknown;	// unknown, used at <3da3e>
+			}
+			@note: the secret header is placed after the sector !
+
+
+			// common directory structure
+			struct fugue_directory_file {
+			+0	char name[8];		// filename  (filled with spaces)
+			+8	char extention[3];	// extention (filled with spaces)
+			+12	uint8_t attribute;	// file type
+			+13	uint8_t unknown;
+			+14	uint8_t unknown;
+			+15	uint8_t unknown;
+			+16	uint8_t unknown;
+			+17	uint8_t unknown;
+			+18	uint8_t unknown;
+			+19	uint8_t unknown;
+			+20	uint8_t cluster?;	// MSB - 3 (cluster ID?)
+			+21	uint8_t cluster?;	// MSB - 4 (cluster ID?)
+			+22	uint8_t unknown;
+			+23	uint8_t unknown;
+			+24	uint8_t unknown;
+			+25	uint8_t unknown;
+			+26	uint8_t cluster?;	// MSB - 2 (cluster ID?)
+			+27	uint8_t cluster?;	// MSB - 1 (cluster ID?)
+			+28	uint32_t size;		// (MSB) entier file size
+			};
+
+			// child directory of a parent with 0x0f attribute
+			struct fugue_directory_name {
+				// internal fugue info
+			+00	struct {
+					uint8_t const		: 1;	// aloways 0
+					uint8_t watermark	: 1;	// should be 1
+					uint8_t index		: 6;	// index of the internal index used to store the filename using internal resolving structure at <8800f9dc0>
+				} internal_fugue_resolve;
+
+				// first part of the filename
+			+01	uint16_t c1;				// (MSB) char 0
+			+03	uint16_t c2;				// (MSB) char 1
+			+05	uint16_t c3;				// (MSB) char 2
+			+07	uint16_t c4;				// (MSB) char 3
+			+09	uint16_t c5;				// (MSB) char 4
+
+				// unknown info
+			+11	uint8_t attribute;			// should be 0x0f
+			+12	uint8_t __pading;
+			+13	uint8_t checksum;			// look at <40c34>
+
+				// second part of the filename
+			+14	uint16_t c6;				// (MSB) char 5
+			+16	uint16_t c7;				// (MSB) char 6
+			+18	uint16_t c8;				// (MSB) char 7
+			+20	uint16_t c9;				// (MSB) char 8
+			+22	uint16_t c10;				// (MSB) char 9
+			+24	uint16_t c11;				// (MSB) char 10
+			+26	uint16_t unknown;			// unknown
+			+28	uint16_t c12;				// (MSB) char 11
+			+30	uint16_t c13;				// (MSB) char 12
+			}
+		}
+
+		@info:
+		{
+			* name (first byte)
+				* 0x00 - free entry          (checked at <40786>)
+				* 0x20 - empty folder        (used by Casio on the device-name dirctory)
+				* 0x05 - removed entry       (seems used 0xe5 instead)
+				* 0x2e - "dot" or "dot dot"
+				* 0x4x - magic bits use to indicate the starting file which store the filename   (checked at <408da> only if the attribute is 0x0f)
+					* x = the nuber of file used to store the name
+				* 0xe5 - removed entry       (checked at <40792>)
+			* attribute:
+				* 0x01 - read only           (seems not implemented)
+				* 0x02 - hidden file         (seems not implemented)
+				* 0x04 - sysfile             (seems not implemented)
+				* 0x08 - device name         (checked at <40928>, just ignored)
+				* 0x0f - custom filename     (checked at <407a8>)
+				* 0x10 - sub-directory
+				* 0x20 - archive
+				* 0x40 - device              (checked at <408da>)
+				* 0x80 - unused              (seems not implemented)
+			* checksum (only special directory with attribute 0x0f):
+			{
+				@note:
+				* this part is the traducted function located at <40c34>
+
+				uint8_t fugue_checksum(uint8_t *directory_addr)
+				{
+					uint32_t checksum;
+					int a;
+					int b;
+
+					// calculate the checksum
+					checksum = 0;
+					for (int i = 0 ; i < 11 ; ++i) {
+						checksum = checksum & 0xff;
+						a = checksum / 2;
+						b = checksum * 128;
+						checksum = a | b;
+						checksum = checksum + directory_addr[i];
+					}
+
+					return (checksum & 0xff);
+				}
+			}
+		}
+
+		@techical / test note:
+			* the first directory of the reserved sectors (0) is the device name (only spaces :( )
+			* if the attribute is 0x0f and the first byte have the 0x40 bit set then:
+				* get the 6 first bits (0x3f), this will allow you to get the index of name table (min 0x01 / max 0x20)
+				* (index * 23) used to store file name (13 character * wide-char -> 26 bytes)
+				* this index represent the stage of the path (root, directory, subdirectory, subsubdirectory, ...)
+	}
+
+	Graph90+E, primtive cached information
+	8c0ccd5c - x slots of 0x1c bytes
+	{
+		uint32_t unknown;
+	}
+
+	880175xx - file table ?
+
+
+	802206f8 - Fugue device primitives table (18 functions, 72 bytes)
+		+24 - device_get_free_space(?)
+	80220740 - File System Name string "Fugue FAT File System 2004-03-03"
+
+	//---
+	// hardcoded
+	// @note: used by the open() primitive
+	//---
+	8800ed90 - copy of the Fugue pathname (but Bfile style, 2-aligned)
+	8800f1a0 - first part of the path (ex: "\folder\file" -> "\folder\")
+	8800f3a8 - clean filename (remove dot and space)
+	8800f7b8 - filename buffer (copy of <8800f3a8>, but with clean begin (ex: "   vhex.g1a" -> "vhex.g1a"))
+	8800f5b0 - first folder name dump (ex: "\a\b\c" -> "a")
+	8800f55c - unknown
+	8800fbe2 - internal buffer to store the "directory name" (u"vhex.g1a" -> "VHEX   ")
+	8800fbf4 - internal structure (?)
+		+4  - sector size
+		+8  - address of ???? (NULL)
+		+16 - address of ???? (NULL)
+		+21 - unknown (set to 0, 3 bytes)
+		+24 - address
+		+28 - unknown
+		+32 - separator string (2 bytes)
+	8800f9b8 - internal structure based on the file information
+		+0  - magic0                                      (0x00000028, checked at <3e260>, set at <40b52>)
+		+4  - magic1                                      (0x000000c0, checked at <3e260>)
+		+8  - unknown                                     (0x00000000)
+		+12 - saved sector ID                             (used at <405f0>)
+		+16 - saved sector offset                         (used at <405f4>)
+		+20 - saved directory attribute + 64              (checked at <3a180>)
+		+21 - save the informations of the directory with 0x0f as attribute and 0x4* type bit set (index table)
+		+22 - save the informations of the directory with 0x0f as attribute and 0x4* type bit set (checksum)
+		+23 - save the filename size
+		+24 - file size !
+		+28 - saved cluster ID
+		+32 - 13 wchar table of 32 slot (26 * 32 -> 832 bytes)
+		        * file name (8 (name) + 1 (dot) + 3 (entention) + 1(null-char) -> 13 wide char -> 26 bytes)
+			* filled by 0xffff (Shift-JIS null char)
+
+	880104f0 - unknown
+
+
+	#---
+	# Power Off
+	#---
+	880133a8 - unknown checked at <8473c>
+
+	#---
+	# SD Card
+	#---
+		0xfd802ab4 - SD Card device validity (0=no, otherwise yes)
+		0xfd802a30 - SD Card device validity (0=no, otherwise yes)
+		0xfd803b10 - SD Card mounted device (0=no, otherwise yes)
+
+		fd802ab4 - table of 16 slots of 256 bytes, used at <27625a>
+		{
+			+0 - unknown (uin8_t)
+		}
+		fd803ab4 - table of 16 slots of 4 bytes, used at <27625e>
+		{
+			+0 - uknown (uint32_t, filled with 0xffffffff, address?)
+		}
+		fd803af4 - table of 16 slots of 1 byte, used at <276262>
+		{
+			+0 - uknown (uint8_t)
+		}
+
+	#---
+	# ADC
+	#---
+	0xfd800e88 - saved address 0xfd8007f2
+
+
+	#---
+	# USB software driver:
+	#---
+	0x88004b78 - uint16_t ????? (used at <e92a>)
+	0x88004b80 - ?????
+
+	0x88004cb4 - USB hardware initialization address <0xa000a13a>
+
+	0x88009578 - ????? (used at <266470> and <269fb0>)
+
+	0x88007b70 - used by the software driver to set arg (USB driver state ?) like: 1800000[1/2/3/4/5/6/7]
+	-> used to indicate USB driver state ?
+	-> used to configure one register of the USB hardware module ?
+	0x88007b78 - ?????? (used at <266974>)
+
+	0x8800b840 - function pointer for the USB interrupt handler (0x80267c78)
+	0x8800b844 - argument pointer for the USB interrupt handler (0x88007d50)
+	0x8800b848 - ????? (used at <266470>, check if == 1)
+	0x8800b86c - used by the USB timer handler to check initialization validity (?)
+	0x8800b868 - ?????
+	0x8800b86c - buffer of size 48 bytes
+
+	0x8800c2d4 - Indicate if any communication is used (serial or USB)
+	0x8800c2d6 - Content the currently selected comminication mode (0=serial, 1=USB)
+	0x8800c2d8 - unknown (set to 1 by the syscall 0x29b)
+	struct comm_info_s
+	{
+		uint16_t used;		// 0=no, other yes
+		uint16_t type; 		// 0=SERIAL, 1=USB
+		uint16_t unknown; 	// syscall 0x29b set to 1
+	};
+
+	0x8800c388 - USB hardware initialisation state ?
+	0x8800c38c - ?????
+
+	0x88013354 - USB structure entry: (undocumented yet)
+	-> set to 0x00000000 by the syscall USB_close()
+
+	0x8026a690 - Some string used by the USB drivers ("KSL")
+
+	#---
+	# Applications
+	#---
+	0x8024367c - LINK Fkey remap data (6 entries)
+	0x80212950 - const char table
+
+
+
+
+USB notes:
+-> Casio's use undocumented register 0xa4d800c2
+-> Casio's use the timer 4 to generate USB interrupt (see USB_Close())
+-> Casio's use hardware USB module interrupt
+-> Casio's use DMA channel 4
+-> Casio's vendor ID: "Casio Computer Co., Ltd" (0x07cf)
+-> Casio's product ID: "fx-CP400" (0x6102)
+-> use BULK transfert.
+	Based on the `CPU7305.dll`: register list:
+	0x00000000 XTAL_USB (USB frequency)
+	0xa4150014 USBCLKCR (USB Clock control)
+
+	USB 2 control
+
+
+
+
+
+App note:
+	Fkey remap structure:
+	struct fkey_remap {
+		struct {
+			uint16_t ID;		// ICON id, used by the syscall 0x4b0
+			uint16_t validity;	// always 0x0002
+		} icon;
+		struct {
+			uint16_t validity; 	// always 0x0000
+			uint16_t returned;	// returned value when when fkey is pressed
+		} fkey;
+	};

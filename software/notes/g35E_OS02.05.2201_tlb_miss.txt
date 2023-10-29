@@ -1,0 +1,141 @@
+SYSCALL 0x0003: TLB_miss_handler() documentations
+
+##
+## SYSCALL 0x03: TLB_miss_handler
+##
+   112b4:	2f e6       	mov.l	r14,@-r15	! save r14 register.
+   112b6:	4f 22       	sts.l	pr,@-r15	! save pr register.
+   112b8:	7f f0       	add	#-16,r15	! create uint8_t tab[16];
+   112ba:	ee ff       	mov	#-1,r14		! r14 = 0xffffffff
+   112bc:	e1 f0       	mov	#-16,r1		! r1  = 0xfffffff0
+   112be:	4e 18       	shll8	r14		! r14 <<=  8 --> r14 = 0xffffff00
+   112c0:	e6 30       	mov	#48,r6		! r6  = 0x00000030
+   112c2:	4e 28       	shll16	r14		! r14 <<= 16 --> r14 = 0xff000000 (MMU.PETH register)
+   112c4:	41 18       	shll8	r1		! r6  <<=  8 --> r6  = 0x00003000
+
+# Check VPN.
+   112c6:	62 e2       	mov.l	@r14,r2		! r2 = MMU.PETH
+   112c8:	46 28       	shll16	r6		! r6  <<= 16 --> r6  = 0x30000000
+   112ca:	22 19       	and	r1,r2		! r2 = MMU.PETH & 0x30000000
+   112cc:	2f 22       	mov.l	r2,@r15		! save MMU.PETH
+   112ce:	61 f2       	mov.l	@r15,r1		! restore MMU.PETH
+   112d0:	31 62       	cmp/hs	r6,r1		! if (MMU.PETH & 0x30000000) >= 0x30000000...
+   112d2:	8b 13       	bf	0x112fc		! ...if no, jump at <0x112fc>	     ---
+												|
+# Handle TLB miss										|
+   112d4:	e1 6c       	mov	#108,r1		! r1 = 0x0000006c 			|
+   112d6:	1f 11       	mov.l	r1,@(4,r15)	! tab[4] = 0x0000006c			|
+   112d8:	60 f2       	mov.l	@r15,r0		! r0 = MMU.PETH & 0x30000000		|
+   112da:	e2 f4       	mov	#-12,r2		! r2 = 0xfffffff4			|
+   112dc:	d5 3a       	mov.l	0x113c8,r5	! r5 = 88007fd8				|
+   112de:	30 68       	sub	r6,r0		! r0 = r0 - 0x30000000			|
+   112e0:	40 2d       	shld	r2,r0		! r0 = r0 >> 12				|
+   112e2:	40 08       	shll2	r0		! r0 = r0 << 2				|
+   112e4:	06 5e       	mov.l	@(r0,r5),r6	! r6 = pages information (??)		|
+   112e6:	26 68       	tst	r6,r6		! if r6 != 0...				|
+   112e8:	89 08       	bt	0x112fc		! ...if yes, jump at <112fc>	     ---|
+   112ea:	d2 38       	mov.l	0x113cc,r2	! r2 = 1fffffff				|
+   112ec:	26 29       	and	r2,r6		! r6 = r6 & 0x1fffffff			|
+   112ee:	1f 62       	mov.l	r6,@(8,r15)	! save r6				|
+   112f0:	56 f1       	mov.l	@(4,r15),r6	! r6 = 0x0000006c			|
+   112f2:	64 f2       	mov.l	@r15,r4		! r4 = MMU.PETH & 0x30000000		|
+   112f4:	bf 2c       	bsr	0x11150		! call subroutine <11150> (TLB miss)	|
+   112f6:	55 f2       	mov.l	@(8,r15),r5	! (db) restore page information (?)	|
+   112f8:	a0 02       	bra	0x11300		! jump at <11300>			|    ---
+   112fa:	00 09       	nop			! (db) nop				|	|
+												|	|
+# Force skip the "error part" (??)								|	|
+   112fc:	e1 00       	mov	#0,r1		! r1 = 0			   < ---	|
+   112fe:	2f 12       	mov.l	r1,@r15		! tab[0] = 0					|
+													|
+# Error part (??)											|
+   11300:	61 f2       	mov.l	@r15,r1		! r1 = tab[0]				   < ---
+   11302:	21 18       	tst	r1,r1		! if r1 != 0...
+   11304:	8b 0b       	bf	0x1131e		! ... if no, jump at <1131e> (exit)	     ---
+   11306:	d7 32       	mov.l	0x113d0,r7	! 80067c40 (syscall 0x3fe GetStackPtr())	|
+   11308:	54 e3       	mov.l	@(12,r14),r4	! r4 = MMU.TEA					|
+   1130a:	47 0b       	jsr	@r7		! get stack address.				|
+   1130c:	2f 42       	mov.l	r4,@r15		! save TLB exception address			|
+   1130e:	70 44       	add	#68,r0		! r0 = stack + 68		(why ?)		|
+   11310:	1f 03       	mov.l	r0,@(12,r15)	! save stack + 68		(why ?)		|
+   11312:	51 f3       	mov.l	@(12,r15),r1	! restore stack + 68		(why ?)		|
+   11314:	66 12       	mov.l	@r1,r6		! get ???			(why ?)		|
+   11316:	1f 63       	mov.l	r6,@(12,r15)	! save r6			(why ?)		|
+   11318:	64 f2       	mov.l	@r15,r4		! r4 = MMU.PETH & 0x30000000			|
+   1131a:	be cb       	bsr	0x110b4		! jump at <110b4> (syscall 0x016)		|
+   1131c:	55 f3       	mov.l	@(12,r15),r5	! r5 = @(stack + 68)		(why ?)		|
+													|
+# Exit part.												|
+   1131e:	7f 10       	add	#16,r15		! restore stack space.			   < ---
+   11320:	4f 26       	lds.l	@r15+,pr	! restore pr register.
+   11322:	00 0b       	rts			! exit
+   11324:	6e f6       	mov.l	@r15+,r14	! (db) restore r14 register.
+
+
+
+##
+## Sub-routine <11150> called by the sycall TLB_miss_handler.
+## @prototype	void function(int, int, int)
+##
+   11150:	2f e6       	mov.l	r14,@-r15	! save pr register.
+   11152:	7f f4       	add	#-12,r15	! create char tab[12]
+   11154:	d7 9a       	mov.l	0x113c0,r7	! r7  = 880082d8 (internal Casio's UTLB Replace Counter value)
+   11156:	ee ff       	mov	#-1,r14		! r14 = 0xffffffff
+   11158:	4e 18       	shll8	r14		! r14 = r14 << 8  --> r14 = 0xffffff00
+   1115a:	d3 9a       	mov.l	0x113c4,r3	! r3  = 0xffff03ff
+   1115c:	4e 28       	shll16	r14		! r14 = r14 << 16 --> r14 = 0xff000000	(MMU.PETH register)
+   1115e:	1f 62       	mov.l	r6,@(8,r15)	! save r6 (at tab[8])
+   11160:	2f 42       	mov.l	r4,@r15		! save r4 (at tab[0])
+
+# Get MMU informations.
+   11162:	52 e4       	mov.l	@(16,r14),r2	! r2 = MMU.MMUCR (MMU Constrol Register)
+   11164:	61 72       	mov.l	@r7,r1		! r1 = @880082d8 (get internal Casio's UTLB Replace Counter value)
+   11166:	22 39       	and	r3,r2		! r2 = MMU.MMUCR & 0xffff03ff -> Get all MMUCR data except MMU.URC
+
+# Update MMU Control Register.
+   11168:	e3 a0       	mov	#-96,r3		! r3 = 0xffffffa0
+   1116a:	41 18       	shll8	r1		! r1 = r1 << 8
+   1116c:	1f 51       	mov.l	r5,@(4,r15)	! save r5
+   1116e:	41 08       	shll2	r1		! r1 = r1 << 2
+   11170:	43 18       	shll8	r3		! r3 = r3 << 8  --> r3 = 0xffffa000
+   11172:	22 1b       	or	r1,r2		! r2 = r2 | r1 (add Casio's MMU.URC value)
+   11174:	1e 24       	mov.l	r2,@(16,r14)	! MMU.MMUCR = r2
+   11176:	43 28       	shll16	r3		! r3 = r3 << 16 --> r3 = 0xa0000000
+
+## Casio SHOULD use this instruction because of MMU Control Register update.
+## But Casio does not want to invalidate any instruction cache block, so they
+## use the start of the ROM (non-cachable area) to skip this mandatory part.
+   11178:	03 e3       	.word 0x03e3		! icbi @r3 --> (SH4 instruction)
+
+# Update MMU.PETH and MMU.PETL before update TLB.
+   1117a:	2e 42       	mov.l	r4,@r14		! update MMU.PETH register.
+   1117c:	e7 44       	mov	#68,r7		! r7 = 0x00000044
+   1117e:	47 08       	shll2	r7		! r7 = r7 << 2 --> r7 = 0x00000110
+   11180:	25 6b       	or	r6,r5		! r5 = r5 | r6
+   11182:	25 7b       	or	r7,r5		! r5 = r5 | r7
+   11184:	1e 51       	mov.l	r5,@(4,r14)	! MMU.PETL = r5	(force MMU.PETL.SZ0 and MMU.PETL.V bit to be up)
+   11186:	00 38       	ldtlb			! Load the content MMU.PETH and MMU.PETL registers into TLB.
+   11188:	00 09       	nop			! nop
+   1118a:	00 09       	nop			! nop
+   1118c:	00 09       	nop			! nop
+   1118e:	d1 8c       	mov.l	0x113c0,r1	! r1 = 880082d8 (internal Casio's UTLB Replace Counter value)
+
+## Casio SHOULD use this instruction because of LDTLB instruction.
+## But Casio does not want to invalidate any instruction cache block, so they
+## use the start of the ROM (non-cachable area) to skip this mandatory part.
+   11190:	03 e3       	.word 0x03e3		! icbi @r3 --> (SH4 instruction)
+
+# Update internal Casio's UTLB Replace Counter value.
+   11192:	ee 36       	mov	#54,r14		! r14 = 0x00000036
+   11194:	62 12       	mov.l	@r1,r2		! r2 = @880082d8
+   11196:	32 e3       	cmp/ge	r14,r2		! if r2 >= 0x00000036...
+   11198:	89 01       	bt	0x1119e		! if yes, jump at <1119e>    ---
+   1119a:	a0 01       	bra	0x111a0		! jump at <111a0>		|    ---
+   1119c:	72 01       	add	#1,r2		! r2 = r2 + 1			|	|
+   1119e:	e2 00       	mov	#0,r2		! r2 = 0		   < ---	|
+   111a0:	21 22       	mov.l	r2,@r1		! save counter at 0x880082d8	   < ---
+
+# Exit part.
+   111a2:	7f 0c       	add	#12,r15		! restore stack space.
+   111a4:	00 0b       	rts			! exit
+   111a6:	6e f6       	mov.l	@r15+,r14	! (db) restore r14 register.
